@@ -1,0 +1,276 @@
+﻿{
+    "ExecutedAt":  "2026-10-15T08:48:59.7918357+01:00",
+    "BaseUrl":  "http://localhost:5074",
+    "Summary":  {
+                    "Total":  33,
+                    "Passed":  33,
+                    "Failed":  0,
+                    "Errors":  0
+                },
+    "Results":  [
+                    {
+                        "Test":  "Swagger is reachable",
+                        "Result":  "PASS",
+                        "ExpectedStatus":  "200",
+                        "ActualStatus":  200,
+                        "Detail":  "",
+                        "Response":  "{\n  \"openapi\": \"3.0.4\",\n  \"info\": {\n    \"title\": \"DevTeamTaskManager.Api\",\n    \"version\": \"1.0\"\n  },\n  \"paths\": {\n    \"/api/Developers\": {\n      \"get\": {\n        \"tags\": [\n          \"Developers\"\n        ],\n        \"responses\": {\n          \"200\": {\n            \"description\": \"OK\",\n            \"content\": {\n              \"text/plain\": {\n                \"schema\": {\n                  \"type\": \"array\",\n                  \"items\": {\n                    \"$ref\": \"#/components/schemas/Developer\"\n           "
+                    },
+                    {
+                        "Test":  "GET Developers",
+                        "Result":  "PASS",
+                        "ExpectedStatus":  "200",
+                        "ActualStatus":  200,
+                        "Detail":  "",
+                        "Response":  "[{\"id\":1,\"name\":\"Test Developer 1\",\"email\":\"test1@devteam.local\",\"tasks\":[],\"timeEntries\":[]},{\"id\":2,\"name\":\"Test Developer 2\",\"email\":\"test2@devteam.local\",\"tasks\":[],\"timeEntries\":[]},{\"id\":3,\"name\":\"Test Developer 3\",\"email\":\"test3@devteam.local\",\"tasks\":[],\"timeEntries\":[]},{\"id\":4,\"name\":\"Test Developer 4\",\"email\":\"test4@devteam.local\",\"tasks\":[],\"timeEntries\":[]},{\"id\":5,\"name\":\"Test Developer 5\",\"email\":\"test5@devteam.local\",\"tasks\":[],\"timeEntries\":[]},{\"id\":6,\"name\":\"Test Developer 6\","
+                    },
+                    {
+                        "Test":  "GET Tasks",
+                        "Result":  "PASS",
+                        "ExpectedStatus":  "200",
+                        "ActualStatus":  200,
+                        "Detail":  "",
+                        "Response":  "[{\"id\":1,\"client\":\"Test Client 1\",\"description\":\"Test task description 1\",\"assigneeId\":1,\"assigneeName\":\"Test Developer 1\",\"estimatedHours\":3.25,\"dueDate\":\"2026-10-16T00:00:00\",\"priority\":1,\"status\":0,\"sprintId\":1,\"sprintName\":\"Test Sprint 1\",\"loggedHours\":2.50,\"isOverBudget\":false,\"createdAt\":\"2026-10-15T07:34:43.5333333\"},{\"id\":2,\"client\":\"Test Client 2\",\"description\":\"Test task description 2\",\"assigneeId\":2,\"assigneeName\":\"Test Developer 2\",\"estimatedHours\":4.50,\"dueDate\":\"2026-10-17T00:00:00"
+                    },
+                    {
+                        "Test":  "GET Sprints",
+                        "Result":  "PASS",
+                        "ExpectedStatus":  "200",
+                        "ActualStatus":  200,
+                        "Detail":  "",
+                        "Response":  "[{\"id\":1,\"name\":\"Test Sprint 1\",\"startDate\":\"2026-10-01T00:00:00\",\"endDate\":\"2026-10-14T00:00:00\",\"status\":2,\"taskCount\":7},{\"id\":2,\"name\":\"Test Sprint 2\",\"startDate\":\"2026-10-15T00:00:00\",\"endDate\":\"2026-10-28T00:00:00\",\"status\":1,\"taskCount\":7},{\"id\":3,\"name\":\"Test Sprint 3\",\"startDate\":\"2026-10-29T00:00:00\",\"endDate\":\"2026-11-11T00:00:00\",\"status\":1,\"taskCount\":7},{\"id\":4,\"name\":\"Test Sprint 4\",\"startDate\":\"2026-11-12T00:00:00\",\"endDate\":\"2026-11-25T00:00:00\",\"status\":1,\"taskCount\":7},{\"id\":5"
+                    },
+                    {
+                        "Test":  "GET TimeEntries",
+                        "Result":  "PASS",
+                        "ExpectedStatus":  "200",
+                        "ActualStatus":  200,
+                        "Detail":  "",
+                        "Response":  "[{\"id\":1,\"taskId\":1,\"client\":\"Test Client 1\",\"developerId\":1,\"developerName\":\"Test Developer 1\",\"workDate\":\"2026-10-01T00:00:00\",\"durationHours\":0.50,\"note\":\"Test work log 1\",\"createdAt\":\"2026-10-15T07:34:43.55\"},{\"id\":2,\"taskId\":2,\"client\":\"Test Client 2\",\"developerId\":2,\"developerName\":\"Test Developer 2\",\"workDate\":\"2026-10-02T00:00:00\",\"durationHours\":1.00,\"note\":\"Test work log 2\",\"createdAt\":\"2026-10-15T07:34:43.55\"},{\"id\":3,\"taskId\":3,\"client\":\"Test Client 3\",\"developerId\":3,\"developerName\""
+                    },
+                    {
+                        "Test":  "Unknown task returns 404",
+                        "Result":  "PASS",
+                        "ExpectedStatus":  "404",
+                        "ActualStatus":  404,
+                        "Detail":  "",
+                        "Response":  "{\"type\":\"https://tools.ietf.org/html/rfc9110#section-15.5.5\",\"title\":\"Not Found\",\"status\":404,\"traceId\":\"00-2f2e76abb8af8dfeb16a373efdc52046-1e5903a6394104af-00\"}"
+                    },
+                    {
+                        "Test":  "Unknown time entry returns 404",
+                        "Result":  "PASS",
+                        "ExpectedStatus":  "404",
+                        "ActualStatus":  404,
+                        "Detail":  "",
+                        "Response":  "{\"type\":\"https://tools.ietf.org/html/rfc9110#section-15.5.5\",\"title\":\"Not Found\",\"status\":404,\"traceId\":\"00-3de157a41e2d4ddced34a56bb9ed0505-6200c3e271ea1295-00\"}"
+                    },
+                    {
+                        "Test":  "Unknown sprint capacity returns 404",
+                        "Result":  "PASS",
+                        "ExpectedStatus":  "404",
+                        "ActualStatus":  404,
+                        "Detail":  "",
+                        "Response":  "{\"type\":\"https://tools.ietf.org/html/rfc9110#section-15.5.5\",\"title\":\"Not Found\",\"status\":404,\"traceId\":\"00-f25b3883054d82b44c2e03079adeaee7-5aa5ffff523a312a-00\"}"
+                    },
+                    {
+                        "Test":  "Deleting unknown task returns 404",
+                        "Result":  "PASS",
+                        "ExpectedStatus":  "404",
+                        "ActualStatus":  404,
+                        "Detail":  "",
+                        "Response":  "{\"type\":\"https://tools.ietf.org/html/rfc9110#section-15.5.5\",\"title\":\"Not Found\",\"status\":404,\"traceId\":\"00-65bed4a082706b4c697065b3c38e820f-340237870872dbea-00\"}"
+                    },
+                    {
+                        "Test":  "Task filter by assigneeId",
+                        "Result":  "PASS",
+                        "ExpectedStatus":  "200",
+                        "ActualStatus":  200,
+                        "Detail":  "",
+                        "Response":  "[{\"id\":1,\"client\":\"Test Client 1\",\"description\":\"Test task description 1\",\"assigneeId\":1,\"assigneeName\":\"Test Developer 1\",\"estimatedHours\":3.25,\"dueDate\":\"2026-10-16T00:00:00\",\"priority\":1,\"status\":0,\"sprintId\":1,\"sprintName\":\"Test Sprint 1\",\"loggedHours\":2.50,\"isOverBudget\":false,\"createdAt\":\"2026-10-15T07:34:43.5333333\"},{\"id\":11,\"client\":\"Test Client 3\",\"description\":\"Test task description 11\",\"assigneeId\":1,\"assigneeName\":\"Test Developer 1\",\"estimatedHours\":15.75,\"dueDate\":\"2026-10-26T00:00"
+                    },
+                    {
+                        "Test":  "Invalid status filter rejected",
+                        "Result":  "PASS",
+                        "ExpectedStatus":  "400",
+                        "ActualStatus":  400,
+                        "Detail":  "",
+                        "Response":  "{\"type\":\"https://tools.ietf.org/html/rfc9110#section-15.5.1\",\"title\":\"One or more validation errors occurred.\",\"status\":400,\"errors\":{\"status\":[\"The value \u0027999\u0027 is invalid.\"]},\"traceId\":\"00-89fe3f5b150d97418d0471f2bce92398-106592647580b381-00\"}"
+                    },
+                    {
+                        "Test":  "Invalid priority filter rejected",
+                        "Result":  "PASS",
+                        "ExpectedStatus":  "400",
+                        "ActualStatus":  400,
+                        "Detail":  "",
+                        "Response":  "{\"type\":\"https://tools.ietf.org/html/rfc9110#section-15.5.1\",\"title\":\"One or more validation errors occurred.\",\"status\":400,\"errors\":{\"priority\":[\"The value \u0027999\u0027 is invalid.\"]},\"traceId\":\"00-051c2875efac12cb6064ae2d9d2a097f-098fb823210937a8-00\"}"
+                    },
+                    {
+                        "Test":  "Create valid task returns 201",
+                        "Result":  "PASS",
+                        "ExpectedStatus":  "201",
+                        "ActualStatus":  201,
+                        "Detail":  "",
+                        "Response":  "{\"id\":36,\"client\":\"QA_AUTOTEST_20261015084858\",\"description\":\"Temporary task created by API regression test; safe to delete\",\"assigneeId\":1,\"assigneeName\":\"Test Developer 1\",\"estimatedHours\":5,\"dueDate\":\"2026-10-29T08:48:58\",\"priority\":2,\"status\":1,\"sprintId\":null,\"sprintName\":null,\"loggedHours\":0,\"isOverBudget\":false,\"createdAt\":\"2026-10-15T07:48:58.666949Z\"}"
+                    },
+                    {
+                        "Test":  "Read created task returns 200",
+                        "Result":  "PASS",
+                        "ExpectedStatus":  "200",
+                        "ActualStatus":  200,
+                        "Detail":  "",
+                        "Response":  "{\"id\":36,\"client\":\"QA_AUTOTEST_20261015084858\",\"description\":\"Temporary task created by API regression test; safe to delete\",\"assigneeId\":1,\"assigneeName\":\"Test Developer 1\",\"estimatedHours\":5.00,\"dueDate\":\"2026-10-29T08:48:58\",\"priority\":2,\"status\":1,\"sprintId\":null,\"sprintName\":null,\"loggedHours\":0,\"isOverBudget\":false,\"createdAt\":\"2026-10-15T07:48:58.666949\"}"
+                    },
+                    {
+                        "Test":  "Created task ID matches",
+                        "Result":  "PASS",
+                        "ExpectedStatus":  "Condition",
+                        "ActualStatus":  "OK",
+                        "Detail":  "id=36",
+                        "Response":  ""
+                    },
+                    {
+                        "Test":  "Client text filter finds test task",
+                        "Result":  "PASS",
+                        "ExpectedStatus":  "200",
+                        "ActualStatus":  200,
+                        "Detail":  "",
+                        "Response":  "[{\"id\":36,\"client\":\"QA_AUTOTEST_20261015084858\",\"description\":\"Temporary task created by API regression test; safe to delete\",\"assigneeId\":1,\"assigneeName\":\"Test Developer 1\",\"estimatedHours\":5.00,\"dueDate\":\"2026-10-29T08:48:58\",\"priority\":2,\"status\":1,\"sprintId\":null,\"sprintName\":null,\"loggedHours\":0,\"isOverBudget\":false,\"createdAt\":\"2026-10-15T07:48:58.666949\"}]"
+                    },
+                    {
+                        "Test":  "Client filter contains test task",
+                        "Result":  "PASS",
+                        "ExpectedStatus":  "Condition",
+                        "ActualStatus":  "OK",
+                        "Detail":  "taskId=36",
+                        "Response":  ""
+                    },
+                    {
+                        "Test":  "Invalid task payload is rejected (expected 400)",
+                        "Result":  "PASS",
+                        "ExpectedStatus":  "400 or 422",
+                        "ActualStatus":  400,
+                        "Detail":  "If this fails, DTO validation is missing.",
+                        "Response":  "{\"type\":\"https://tools.ietf.org/html/rfc9110#section-15.5.1\",\"title\":\"One or more validation errors occurred.\",\"status\":400,\"errors\":{\"Client\":[\"The Client field is required.\",\"The field Client must be a string with a minimum length of 1 and a maximum length of 200.\"],\"Priority\":[\"The field Priority is invalid.\"],\"Description\":[\"The Description field is required.\",\"The field Description must be a string with a minimum length of 1 and a maximum length of 2000.\"],\"EstimatedHours\":[\"The field Estim"
+                    },
+                    {
+                        "Test":  "EstimatedHours=0 rejected (expected 400)",
+                        "Result":  "PASS",
+                        "ExpectedStatus":  "400",
+                        "ActualStatus":  400,
+                        "Detail":  "Known defect if API returns 204.",
+                        "Response":  "{\"type\":\"https://tools.ietf.org/html/rfc9110#section-15.5.1\",\"title\":\"One or more validation errors occurred.\",\"status\":400,\"errors\":{\"EstimatedHours\":[\"The field EstimatedHours must be between 0.1 and 1000.\"]},\"traceId\":\"00-12b04a41dbbdab1c45f64c0e36797e90-d902c5e669636952-00\"}"
+                    },
+                    {
+                        "Test":  "EstimatedHours=0.1 accepted",
+                        "Result":  "PASS",
+                        "ExpectedStatus":  "200 or 204",
+                        "ActualStatus":  204,
+                        "Detail":  "",
+                        "Response":  ""
+                    },
+                    {
+                        "Test":  "Minimum estimate persisted",
+                        "Result":  "PASS",
+                        "ExpectedStatus":  "Condition",
+                        "ActualStatus":  "OK",
+                        "Detail":  "actual=0.10",
+                        "Response":  ""
+                    },
+                    {
+                        "Test":  "Invalid task status rejected (expected 400)",
+                        "Result":  "PASS",
+                        "ExpectedStatus":  "400",
+                        "ActualStatus":  400,
+                        "Detail":  "Known defect if API returns 204.",
+                        "Response":  "{\"type\":\"https://tools.ietf.org/html/rfc9110#section-15.5.1\",\"title\":\"One or more validation errors occurred.\",\"status\":400,\"errors\":{\"Status\":[\"The field Status is invalid.\"]},\"traceId\":\"00-f616527d59e6f0f6ee7513c23a8e1296-bde92487310c5fb1-00\"}"
+                    },
+                    {
+                        "Test":  "Update task with PUT returns 204",
+                        "Result":  "PASS",
+                        "ExpectedStatus":  "204",
+                        "ActualStatus":  204,
+                        "Detail":  "",
+                        "Response":  ""
+                    },
+                    {
+                        "Test":  "PUT changes persisted",
+                        "Result":  "PASS",
+                        "ExpectedStatus":  "Condition",
+                        "ActualStatus":  "OK",
+                        "Detail":  "status=2, estimate=3.50, priority=3",
+                        "Response":  ""
+                    },
+                    {
+                        "Test":  "Time entry duration 25h rejected",
+                        "Result":  "PASS",
+                        "ExpectedStatus":  "400",
+                        "ActualStatus":  400,
+                        "Detail":  "",
+                        "Response":  "{\"message\":\"La durée en heures doit être comprise entre 0.1 et 24 heures pour une seule entrée.\"}"
+                    },
+                    {
+                        "Test":  "Create valid time entry returns 201",
+                        "Result":  "PASS",
+                        "ExpectedStatus":  "201",
+                        "ActualStatus":  201,
+                        "Detail":  "",
+                        "Response":  "{\"id\":51,\"taskId\":36,\"client\":\"\",\"developerId\":1,\"developerName\":\"\",\"workDate\":\"2026-10-15T08:48:59\",\"durationHours\":0.5,\"note\":\"QA temporary entry\",\"createdAt\":\"2026-10-15T07:48:59.4006946Z\"}"
+                    },
+                    {
+                        "Test":  "Read created time entry returns 200",
+                        "Result":  "PASS",
+                        "ExpectedStatus":  "200",
+                        "ActualStatus":  200,
+                        "Detail":  "",
+                        "Response":  "{\"id\":51,\"taskId\":36,\"client\":\"QA_AUTOTEST_20261015084858\",\"developerId\":1,\"developerName\":\"Test Developer 1\",\"workDate\":\"2026-10-15T08:48:59\",\"durationHours\":0.50,\"note\":\"QA temporary entry\",\"createdAt\":\"2026-10-15T07:48:59.4006946\"}"
+                    },
+                    {
+                        "Test":  "Time entry persisted with expected duration",
+                        "Result":  "PASS",
+                        "ExpectedStatus":  "Condition",
+                        "ActualStatus":  "OK",
+                        "Detail":  "entryId=51",
+                        "Response":  ""
+                    },
+                    {
+                        "Test":  "Sprint end date before start date rejected",
+                        "Result":  "PASS",
+                        "ExpectedStatus":  "400",
+                        "ActualStatus":  400,
+                        "Detail":  "",
+                        "Response":  "{\"message\":\"La date de fin du sprint doit être postérieure ou égale à la date de début.\"}"
+                    },
+                    {
+                        "Test":  "GET active sprints",
+                        "Result":  "PASS",
+                        "ExpectedStatus":  "200",
+                        "ActualStatus":  200,
+                        "Detail":  "",
+                        "Response":  "[{\"id\":5,\"name\":\"Test Sprint 5\",\"startDate\":\"2026-11-26T00:00:00\",\"endDate\":\"2026-12-09T00:00:00\",\"status\":1,\"tasks\":[]},{\"id\":4,\"name\":\"Test Sprint 4\",\"startDate\":\"2026-11-12T00:00:00\",\"endDate\":\"2026-11-25T00:00:00\",\"status\":1,\"tasks\":[]},{\"id\":3,\"name\":\"Test Sprint 3\",\"startDate\":\"2026-10-29T00:00:00\",\"endDate\":\"2026-11-11T00:00:00\",\"status\":1,\"tasks\":[]},{\"id\":2,\"name\":\"Test Sprint 2\",\"startDate\":\"2026-10-15T00:00:00\",\"endDate\":\"2026-10-28T00:00:00\",\"status\":1,\"tasks\":[]},{\"id\":1,\"name\":\"Tes"
+                    },
+                    {
+                        "Test":  "Existing sprint capacity returns 200",
+                        "Result":  "PASS",
+                        "ExpectedStatus":  "200",
+                        "ActualStatus":  200,
+                        "Detail":  "",
+                        "Response":  "{\"sprintId\":1,\"sprintName\":\"Test Sprint 1\",\"status\":2,\"startDate\":\"2026-10-01T00:00:00\",\"endDate\":\"2026-10-14T00:00:00\",\"workingDays\":10,\"totalTasks\":7,\"openTasks\":6,\"totalEstimatedHours\":60.25,\"totalLoggedHours\":21.50,\"isOverBudget\":false,\"developerAllocations\":[{\"developerId\":1,\"developerName\":\"Test Developer 1\",\"assignedTasksCount\":4,\"estimatedHours\":31.75,\"loggedHours\":13.00,\"capacityHours\":70.0,\"allocationPercentage\":45.36,\"isOverloaded\":false},{\"developerId\":6,\"developerName\":\"Test Develop"
+                    },
+                    {
+                        "Test":  "Sprint capacity has required totals",
+                        "Result":  "PASS",
+                        "ExpectedStatus":  "Condition",
+                        "ActualStatus":  "OK",
+                        "Detail":  "sprintId=1",
+                        "Response":  ""
+                    },
+                    {
+                        "Test":  "Cleanup test task 36",
+                        "Result":  "PASS",
+                        "ExpectedStatus":  "204 or 404",
+                        "ActualStatus":  204,
+                        "Detail":  "",
+                        "Response":  ""
+                    }
+                ]
+}
