@@ -17,12 +17,13 @@ namespace DevTeamTaskManager.Api.Controllers
         {
             _context = context;
         }
+        private const decimal HoursPerWorkingDay = 7.0m;
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<object>>> GetSprints()
+        public async Task<ActionResult<IEnumerable<object>>> GetSprints(CancellationToken ct)
         {
             var sprints = await _context.Sprints
-                .Include(s => s.Tasks)
+                .AsNoTracking()
                 .Select(s => new
                 {
                     s.Id,
@@ -32,65 +33,143 @@ namespace DevTeamTaskManager.Api.Controllers
                     s.Status,
                     TaskCount = s.Tasks.Count
                 })
-                .ToListAsync();
+                .ToListAsync(ct);
 
             return Ok(sprints);
         }
 
+        [HttpGet("{id:int}/capacity")]
+        public async Task<ActionResult<SprintCapacityReportDto>> GetSprintCapacity(int id, CancellationToken ct)
+        {
+            var report = await BuildCapacityReportAsync(id, ct);
+            return report is null ? NotFound() : Ok(report);
+        }
 
-
-        [HttpGet("{id}/capacity")]
-        public async Task<ActionResult<object>> GetSprintCapacity(int id)
+        [HttpPatch("{id:int}/close")]
+        public async Task<IActionResult> CloseSprint(int id, CancellationToken ct)
         {
             var sprint = await _context.Sprints
                 .Include(s => s.Tasks)
-                .ThenInclude(t => t.Assignee)
-                .Include(s => s.Tasks)
-                .ThenInclude(t => t.TimeEntries)
-                .FirstOrDefaultAsync(s => s.Id == id);
+                .FirstOrDefaultAsync(s => s.Id == id, ct);
 
             if (sprint == null) return NotFound();
 
-            var totalEstimated = sprint.Tasks.Sum(t => t.EstimatedHours);
-            var totalLogged = sprint.Tasks.SelectMany(t => t.TimeEntries).Sum(te => te.DurationHours);
+            if (sprint.Status == SprintStatus.Closed)
+                return Conflict(new { message = "Ce sprint est déjà clôturé." });
 
-            // 1. Calculer le nombre de jours ouvrés du sprint (excluant les week-ends de façon simple)
-            int totalDays = (int)(sprint.EndDate - sprint.StartDate).TotalDays + 1;
-            int workingDays = 0;
-            for (int i = 0; i < totalDays; i++)
+            sprint.Status = SprintStatus.Closed;
+
+            // Les tâches non terminées retournent au backlog
+            foreach (var task in sprint.Tasks.Where(t => t.Status != Status.Completed).ToList())
             {
-                var day = sprint.StartDate.AddDays(i);
-                if (day.DayOfWeek != DayOfWeek.Saturday && day.DayOfWeek != DayOfWeek.Sunday)
-                {
-                    workingDays++;
-                }
+                task.SprintId = null;
             }
-            if (workingDays <= 0) workingDays = 1; // Sécurité anti division par zéro
 
-            // 2. Capacité standard par développeur (ex: 7 heures par jour ouvré)
-            const decimal hoursPerDay = 7.0m;
-            decimal developerStandardCapacity = workingDays * hoursPerDay;
+            await _context.SaveChangesAsync(ct);
+            return NoContent();
+        }
 
-            // 3. Calculer l'affectation par rapport à la capacité réelle du développeur
-            var developerAllocations = sprint.Tasks
-                .GroupBy(t => new { t.AssigneeId, DeveloperName = t.Assignee != null ? t.Assignee.Name : "Unassigned" })
-                .Select(g => new
+        [HttpGet("active")]
+        public async Task<ActionResult<IEnumerable<object>>> GetActiveSprints(CancellationToken ct)
+        {
+            var sprints = await _context.Sprints
+                .AsNoTracking()
+                .Where(s => s.Status != SprintStatus.Closed)
+                .OrderByDescending(s => s.StartDate)
+                .Take(10)
+                .Select(s => new { s.Id, s.Name, s.StartDate, s.EndDate, s.Status })
+                .ToListAsync(ct);
+
+            return Ok(sprints);
+        }
+
+        [HttpPost]
+        public async Task<ActionResult<SprintCapacityReportDto>> CreateSprint([FromBody] CreateSprintDto dto, CancellationToken ct)
+        {
+            if (dto.StartDate == default || dto.EndDate == default)
+                return BadRequest(new { message = "Les dates de début et de fin sont obligatoires." });
+
+            if (dto.EndDate.Date < dto.StartDate.Date)
+                return BadRequest(new { message = "La date de fin du sprint doit être postérieure ou égale à la date de début." });
+
+            var taskIds = dto.TaskIds?.Distinct().ToList() ?? new List<int>();
+
+            var tasksToAttach = taskIds.Count == 0
+                ? new List<TaskItem>()
+                : await _context.Tasks.Where(t => taskIds.Contains(t.Id)).ToListAsync(ct);
+
+            if (tasksToAttach.Count != taskIds.Count)
+                return BadRequest(new { message = "Une ou plusieurs tâches sélectionnées sont introuvables." });
+
+            var sprint = new Sprint
+            {
+                Name = dto.Name.Trim(),
+                StartDate = DateTime.SpecifyKind(dto.StartDate.Date, DateTimeKind.Utc),
+                EndDate = DateTime.SpecifyKind(dto.EndDate.Date, DateTimeKind.Utc),
+                Status = SprintStatus.Active
+            };
+
+            foreach (var task in tasksToAttach)
+            {
+                sprint.Tasks.Add(task);
+            }
+
+            // Un seul SaveChanges = une seule transaction (sprint + affectation des tâches)
+            _context.Sprints.Add(sprint);
+            await _context.SaveChangesAsync(ct);
+
+            // Le taux d'affectation par développeur est renvoyé dès la création
+            var report = await BuildCapacityReportAsync(sprint.Id, ct);
+
+            return CreatedAtAction(nameof(GetSprintCapacity), new { id = sprint.Id }, report);
+        }
+
+        private async Task<SprintCapacityReportDto?> BuildCapacityReportAsync(int id, CancellationToken ct)
+        {
+            var sprint = await _context.Sprints
+                .AsNoTracking()
+                .Include(s => s.Tasks)
+                    .ThenInclude(t => t.TimeEntries)
+                .FirstOrDefaultAsync(s => s.Id == id, ct);
+
+            if (sprint is null) return null;
+
+            var workingDays = CountWorkingDays(sprint.StartDate, sprint.EndDate);
+            var capacityPerDeveloper = workingDays * HoursPerWorkingDay;
+
+            // Tous les développeurs apparaissent, même ceux sans tâche dans le sprint (0 %)
+            var developers = await _context.Developers
+                .AsNoTracking()
+                .OrderBy(d => d.Name)
+                .ToListAsync(ct);
+
+            var sprintEntries = sprint.Tasks.SelectMany(t => t.TimeEntries).ToList();
+
+            var allocations = developers.Select(dev =>
+            {
+                var devTasks = sprint.Tasks.Where(t => t.AssigneeId == dev.Id).ToList();
+                var estimated = devTasks.Sum(t => t.EstimatedHours);
+
+                return new DeveloperAllocationDto
                 {
-                    DeveloperId = g.Key.AssigneeId,
-                    DeveloperName = g.Key.DeveloperName,
-                    AssignedTasksCount = g.Count(),
-                    EstimatedHours = g.Sum(t => t.EstimatedHours),
-                    LoggedHours = g.SelectMany(t => t.TimeEntries).Sum(te => te.DurationHours),
-                    CapacityHours = developerStandardCapacity,
-                    // Vrai taux d'affectation : Heures estimées du dev / Capacité du dev
-                    AllocationPercentage = developerStandardCapacity > 0
-                        ? Math.Round((g.Sum(t => t.EstimatedHours) / developerStandardCapacity) * 100, 2)
+                    DeveloperId = dev.Id,
+                    DeveloperName = dev.Name,
+                    AssignedTasksCount = devTasks.Count,
+                    EstimatedHours = estimated,
+                    // Temps réellement saisi par CE développeur dans ce sprint
+                    LoggedHours = sprintEntries.Where(te => te.DeveloperId == dev.Id).Sum(te => te.DurationHours),
+                    CapacityHours = capacityPerDeveloper,
+                    AllocationPercentage = capacityPerDeveloper > 0
+                        ? Math.Round(estimated / capacityPerDeveloper * 100, 2)
                         : 0,
-                    IsOverloaded = g.Sum(t => t.EstimatedHours) > developerStandardCapacity
-                })
-                .ToList();
+                    IsOverloaded = estimated > capacityPerDeveloper
+                };
+            }).ToList();
 
-            var report = new
+            var totalEstimated = sprint.Tasks.Sum(t => t.EstimatedHours);
+            var totalLogged = sprintEntries.Sum(te => te.DurationHours);
+
+            return new SprintCapacityReportDto
             {
                 SprintId = sprint.Id,
                 SprintName = sprint.Name,
@@ -103,144 +182,19 @@ namespace DevTeamTaskManager.Api.Controllers
                 TotalEstimatedHours = totalEstimated,
                 TotalLoggedHours = totalLogged,
                 IsOverBudget = totalLogged > totalEstimated,
-                DeveloperAllocations = developerAllocations
+                DeveloperAllocations = allocations
             };
-
-            return Ok(report);
         }
 
-
-        [HttpPatch("{id}/close")]
-        public async Task<IActionResult> CloseSprint(int id)
+        private static int CountWorkingDays(DateTime start, DateTime end)
         {
-            // Charger le sprint en incluant ses tâches associées
-            var sprint = await _context.Sprints
-                .Include(s => s.Tasks)
-                .FirstOrDefaultAsync(s => s.Id == id);
-
-            if (sprint == null) return NotFound();
-
-            // 1. Clôturer le sprint
-            sprint.Status = SprintStatus.Closed;
-
-            // 2. Renvoyer toutes les tâches non terminées vers le Backlog (SprintId = null)
-            foreach (var task in sprint.Tasks)
+            var days = 0;
+            for (var d = start.Date; d <= end.Date; d = d.AddDays(1))
             {
-                if (task.Status != Status.Completed)
-                {
-                    task.SprintId = null;
-                }
+                if (d.DayOfWeek != DayOfWeek.Saturday && d.DayOfWeek != DayOfWeek.Sunday)
+                    days++;
             }
-
-            await _context.SaveChangesAsync();
-
-            return NoContent();
-        }
-
-
-
-        [HttpGet("active")]
-        public async Task<ActionResult<IEnumerable<Sprint>>> GetActiveSprints()
-        {
-            // Par exemple, récupérer uniquement les sprints non clôturés ou récents
-            return await _context.Sprints
-                .Where(s => s.Status != SprintStatus.Closed) // ou selon votre logique de statut
-                .OrderByDescending(s => s.StartDate)
-                .Take(10) // Afficher les 10 sprints pertinents maximum
-                .ToListAsync();
-        }
-
-        // [HttpPost]
-        // public async Task<ActionResult<Sprint>> CreateSprint(CreateSprintDto dto)
-        // {
-        //     if (dto.EndDate < dto.StartDate)
-        //     {
-        //         return BadRequest("La date de fin du sprint doit être postérieure ou égale à la date de début.");
-        //     }
-        //     var sprint = new Sprint
-        //     {
-        //         Name = dto.Name,
-        //         StartDate = dto.StartDate,
-        //         EndDate = dto.EndDate,
-        //         Status = dto.Status
-        //     };
-
-        //     _context.Sprints.Add(sprint);
-        //     await _context.SaveChangesAsync();
-
-        //     if (dto.TaskIds != null && dto.TaskIds.Count > 0)
-        //     {
-        //         var tasks = await _context.Tasks
-        //             .Where(t => dto.TaskIds.Contains(t.Id))
-        //             .ToListAsync();
-
-        //         foreach (var task in tasks)
-        //         {
-        //             task.SprintId = sprint.Id;
-        //         }
-
-        //         await _context.SaveChangesAsync();
-        //     }
-
-        //     return CreatedAtAction(nameof(GetSprints), new { id = sprint.Id }, sprint);
-        // }
-
-        [HttpPost]
-        public async Task<ActionResult<Sprint>> CreateSprint([FromBody] CreateSprintDto dto)
-        {
-            if (dto.EndDate < dto.StartDate)
-            {
-                return BadRequest(new { message = "La date de fin du sprint doit être postérieure ou égale à la date de début." });
-            }
-            using var transaction = await _context.Database.BeginTransactionAsync();
-            try
-            {
-                var sprint = new Sprint
-                {
-                    Name = dto.Name,
-                    // StartDate = dto.StartDate,
-                    // EndDate = dto.EndDate,
-                    // CORRECTION ICI : Forcer le Kind en UTC
-                    StartDate = DateTime.SpecifyKind(dto.StartDate, DateTimeKind.Utc),
-                    EndDate = DateTime.SpecifyKind(dto.EndDate, DateTimeKind.Utc),
-                    Status = SprintStatus.Active
-                };
-
-                _context.Sprints.Add(sprint);
-                await _context.SaveChangesAsync();
-
-                if (dto.TaskIds != null && dto.TaskIds.Any())
-                {
-                    var tasksToUpdate = await _context.Tasks
-                        .Where(t => dto.TaskIds.Contains(t.Id))
-                        .ToListAsync();
-
-                    foreach (var task in tasksToUpdate)
-                    {
-                        task.SprintId = sprint.Id;
-                    }
-                    await _context.SaveChangesAsync();
-                }
-
-                await transaction.CommitAsync();
-
-                // Retourner un DTO explicite pour éviter le cycle JSON
-                var responseDto = new Sprint
-                {
-                    Id = sprint.Id,
-                    Name = sprint.Name,
-                    StartDate = sprint.StartDate,
-                    EndDate = sprint.EndDate,
-                    Status = sprint.Status
-                };
-
-                return CreatedAtAction(nameof(GetSprints), new { id = sprint.Id }, responseDto);
-            }
-            catch
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
+            return Math.Max(days, 1);
         }
     }
 }

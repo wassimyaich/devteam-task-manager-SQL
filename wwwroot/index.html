@@ -311,6 +311,20 @@
                         required
                       />
                     </div>
+                    <div class="mb-3">
+                      <label for="sprintTasks" class="form-label"
+                        >Tâches du backlog à inclure (optionnel)</label
+                      >
+                      <select
+                        id="sprintTasks"
+                        class="form-select"
+                        multiple
+                        size="5"
+                      ></select>
+                      <div class="form-text">
+                        Ctrl/Cmd + clic pour en sélectionner plusieurs.
+                      </div>
+                    </div>
                     <button type="submit" class="btn btn-success w-100">
                       Créer le Sprint
                     </button>
@@ -700,7 +714,7 @@
       // La vue Kanban affiche toutes les tâches d'un coup (3 colonnes) ;
       // la pagination ne s'applique qu'à la vue Liste.
       // À adapter si l'API limite pageSize.
-      const KANBAN_PAGE_SIZE = 10;
+      const KANBAN_PAGE_SIZE = 100;
       const TABLE_PAGE_SIZE = 15;
 
       const STATUS_LABELS = { 1: "À faire", 2: "En cours", 3: "Terminé" };
@@ -1019,7 +1033,7 @@
             renderSprintList();
             const filterWasReset = renderSprintFilter();
             $("#newTaskSprint").html(buildSprintOptions(null));
-
+            loadBacklogForSprintForm();
             if (filterWasReset) {
               loadTasks(1);
             }
@@ -1033,6 +1047,27 @@
         return state.sprintsLoaded
           ? $.Deferred().resolve().promise()
           : loadSprints();
+      }
+
+      // Remplit la liste multi-sélection du formulaire de sprint avec le backlog
+      function loadBacklogForSprintForm() {
+        return $.get(API_TASKS, {
+          unassigned: true,
+          pageNumber: 1,
+          pageSize: 100,
+        }).done(function (response) {
+          const selected = ($("#sprintTasks").val() || []).map(String);
+          const options = (response.items || [])
+            .map(function (task) {
+              const id = Number(task.id);
+              const isSelected = selected.includes(String(id))
+                ? " selected"
+                : "";
+              return `<option value="${id}"${isSelected}>#${id} – ${escapeHtml(task.client)} (${toNumber(task.estimatedHours)} h)</option>`;
+            })
+            .join("");
+          $("#sprintTasks").html(options);
+        });
       }
 
       // =====================================================
@@ -1232,12 +1267,18 @@
             name: name,
             startDate: dateAtMidnight(startDate),
             endDate: dateAtMidnight(endDate),
-            status: 1,
+            taskIds: ($("#sprintTasks").val() || []).map(Number),
           }),
         })
-          .done(function () {
+          .done(function (report) {
             $("#formCreateSprint")[0].reset();
+            // Affiche immédiatement le taux d'affectation par développeur
+            const newSprintId = Number(report && report.sprintId);
+            if (newSprintId) {
+              loadSprintReport(newSprintId);
+            }
             loadSprints();
+            loadTasks(1);
             showToast("Sprint créé avec succès !");
           })
           .fail(function (xhr) {
@@ -1252,6 +1293,7 @@
       function afterTaskChange() {
         loadTasks(state.page);
         refreshActiveSprintReport();
+        loadBacklogForSprintForm();
       }
 
       function loadTasks(page) {

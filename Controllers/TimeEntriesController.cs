@@ -69,22 +69,22 @@ namespace DevTeamTaskManager.Api.Controllers
         [HttpPost]
         public async Task<ActionResult<TimeEntryResponseDto>> CreateTimeEntry(CreateTimeEntryDto dto)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
+            // if (!ModelState.IsValid)
+            // {
+            //     return BadRequest(ModelState);
+            // }
 
-            if (dto.DurationHours <= 0 || dto.DurationHours > 24)
-            {
-                return BadRequest(new { message = "La durée en heures doit être comprise entre 0.1 et 24 heures pour une seule entrée." });
-            }
+            // if (dto.DurationHours <= 0 || dto.DurationHours > 24)
+            // {
+            //     return BadRequest(new { message = "La durée en heures doit être comprise entre 0.1 et 24 heures pour une seule entrée." });
+            // }
 
-            var taskExists = await _context.Tasks.AnyAsync(t => t.Id == dto.TaskId);
-            var devExists = await _context.Developers.AnyAsync(d => d.Id == dto.DeveloperId);
+            var task = await _context.Tasks.AsNoTracking().FirstOrDefaultAsync(t => t.Id == dto.TaskId);
+            var developer = await _context.Developers.AsNoTracking().FirstOrDefaultAsync(d => d.Id == dto.DeveloperId);
 
-            if (!taskExists || !devExists)
+            if (task == null || developer == null)
             {
-                return BadRequest(new { message = "Invalid TaskId or DeveloperId provided." });
+                return BadRequest(new { message = "TaskId ou DeveloperId invalide." });
             }
 
             var timeEntry = new TimeEntry
@@ -107,7 +107,9 @@ namespace DevTeamTaskManager.Api.Controllers
             {
                 Id = timeEntry.Id,
                 TaskId = timeEntry.TaskId,
+                Client = task.Client,
                 DeveloperId = timeEntry.DeveloperId,
+                DeveloperName = developer.Name,
                 WorkDate = timeEntry.WorkDate,
                 DurationHours = timeEntry.DurationHours,
                 Note = timeEntry.Note,

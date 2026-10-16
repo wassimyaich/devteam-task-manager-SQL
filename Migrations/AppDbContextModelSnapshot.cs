@@ -94,9 +94,9 @@ namespace DevTeamTaskManager.Api.Migrations
                         new
                         {
                             Id = 1,
-                            EndDate = new DateTime(2026, 10, 15, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            EndDate = new DateTime(2026, 10, 30, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Name = "Sprint 1 - MVP Foundation",
-                            StartDate = new DateTime(2026, 10, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            StartDate = new DateTime(2026, 10, 12, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Status = 2
                         });
                 });
@@ -146,7 +146,13 @@ namespace DevTeamTaskManager.Api.Migrations
 
                     b.HasIndex("AssigneeId");
 
+                    b.HasIndex("Client");
+
+                    b.HasIndex("Priority");
+
                     b.HasIndex("SprintId");
+
+                    b.HasIndex("Status");
 
                     b.ToTable("Tasks");
                 });

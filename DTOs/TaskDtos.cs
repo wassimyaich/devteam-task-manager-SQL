@@ -7,7 +7,7 @@ namespace DevTeamTaskManager.Api.DTOs
     public class CreateTaskDto
     {
         [Required]
-        [StringLength(200, MinimumLength = 1)]
+        [StringLength(100, MinimumLength = 1)]
         public string Client { get; set; } = string.Empty;
 
         [Required]
@@ -17,7 +17,8 @@ namespace DevTeamTaskManager.Api.DTOs
         [Range(1, int.MaxValue)]
         public int AssigneeId { get; set; }
 
-        [Range(typeof(decimal), "0.1", "1000")]
+        // [Range(typeof(decimal), "0.1", "1000")]
+        [Range(0.1, 1000.0, ErrorMessage = "L'estimation doit être comprise entre 0.1 et 1000 heures.")]
         public decimal EstimatedHours { get; set; }
 
         [Required]
@@ -38,7 +39,8 @@ namespace DevTeamTaskManager.Api.DTOs
 
     public class InlineUpdateTaskDto
     {
-        [Range(typeof(decimal), "0.1", "1000")]
+        // [Range(typeof(decimal), "0.1", "1000")]
+        [Range(0.1, 1000.0, ErrorMessage = "L'estimation doit être comprise entre 0.1 et 1000 heures.")]
         public decimal? EstimatedHours { get; set; }
 
         public DateTime? DueDate { get; set; }
@@ -78,4 +80,15 @@ namespace DevTeamTaskManager.Api.DTOs
         public bool IsOverBudget { get; set; }
         public IEnumerable<TimeEntryResponseDto> TimeEntries { get; set; } = [];
     }
+
+
+    public class PagedResult<T>
+    {
+        public IEnumerable<T> Items { get; set; } = [];
+        public int PageNumber { get; set; }
+        public int PageSize { get; set; }
+        public int TotalPages { get; set; }
+        public int TotalRecords { get; set; }
+    }
+
 }

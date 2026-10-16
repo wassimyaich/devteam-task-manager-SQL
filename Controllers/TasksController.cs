@@ -12,30 +12,29 @@ namespace DevTeamTaskManager.Api.Controllers
     public class TasksController : ControllerBase
     {
         private readonly AppDbContext _context;
-
+        private const int MaxPageSize = 100;
         public TasksController(AppDbContext context)
         {
             _context = context;
         }
 
         [HttpGet]
-        public async Task<ActionResult<object>> GetTasks(
-     [FromQuery] string? client,
-     [FromQuery] int? assigneeId,
-     [FromQuery] Status? status,
-     [FromQuery] Priority? priority,
-     [FromQuery] int? sprintId,
-     [FromQuery] bool? unassigned,
-     [FromQuery] int pageNumber = 1,
-     [FromQuery] int pageSize = 15)
+        public async Task<ActionResult<PagedResult<TaskResponseDto>>> GetTasks(
+            [FromQuery] string? client,
+            [FromQuery] int? assigneeId,
+            [FromQuery] Status? status,
+            [FromQuery] Priority? priority,
+            [FromQuery] int? sprintId,
+            [FromQuery] bool? unassigned,
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 15,
+            CancellationToken ct = default)
         {
-            var query = _context.Tasks
-                .Include(t => t.Assignee)
-                .Include(t => t.Sprint)
-                .Include(t => t.TimeEntries)
-                .AsQueryable();
+            pageNumber = Math.Max(1, pageNumber);
+            pageSize = Math.Clamp(pageSize, 1, MaxPageSize);
 
-            // Application des filtres existants
+            var query = _context.Tasks.AsNoTracking().AsQueryable();
+
             if (!string.IsNullOrWhiteSpace(client))
                 query = query.Where(t => t.Client.Contains(client));
 
@@ -54,29 +53,42 @@ namespace DevTeamTaskManager.Api.Controllers
             if (unassigned == true)
                 query = query.Where(t => t.SprintId == null);
 
-            // 1. Comptage du total des enregistrements avant le découpage
-            var totalRecords = await query.CountAsync();
+            var totalRecords = await query.CountAsync(ct);
 
-            // 2. Application du tri, du Skip et du Take pour la pagination
-            var tasks = await query
+            // Projection SQL : on ne charge plus toutes les imputations de temps en mémoire
+            var items = await query
                 .OrderByDescending(t => t.CreatedAt)
+                .ThenByDescending(t => t.Id)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
-                .ToListAsync();
+                .Select(t => new TaskResponseDto
+                {
+                    Id = t.Id,
+                    Client = t.Client,
+                    Description = t.Description,
+                    AssigneeId = t.AssigneeId,
+                    AssigneeName = t.Assignee != null ? t.Assignee.Name : "Unassigned",
+                    EstimatedHours = t.EstimatedHours,
+                    DueDate = t.DueDate,
+                    Priority = t.Priority,
+                    Status = t.Status,
+                    SprintId = t.SprintId,
+                    SprintName = t.Sprint != null ? t.Sprint.Name : null,
+                    LoggedHours = t.TimeEntries.Sum(te => te.DurationHours),
+                    IsOverBudget = t.TimeEntries.Sum(te => te.DurationHours) > t.EstimatedHours,
+                    CreatedAt = t.CreatedAt
+                })
+                .ToListAsync(ct);
 
-            var totalPages = (int)Math.Ceiling(totalRecords / (double)pageSize);
-
-            // 3. Retour d'un objet structuré avec métadonnées
-            return Ok(new
+            return Ok(new PagedResult<TaskResponseDto>
             {
-                Items = tasks.Select(MapToDto),
+                Items = items,
                 PageNumber = pageNumber,
                 PageSize = pageSize,
-                TotalPages = totalPages,
+                TotalPages = (int)Math.Ceiling(totalRecords / (double)pageSize),
                 TotalRecords = totalRecords
             });
         }
-
         [HttpGet("{id}")]
         public async Task<ActionResult<TaskResponseDto>> GetTask(int id)
         {
@@ -143,11 +155,15 @@ namespace DevTeamTaskManager.Api.Controllers
 
             if (dto.SprintId.HasValue && dto.SprintId.Value > 0)
             {
-                var sprintExists = await _context.Sprints.AnyAsync(s => s.Id == dto.SprintId.Value);
-                if (!sprintExists)
-                {
+                var sprint = await _context.Sprints
+     .AsNoTracking()
+     .FirstOrDefaultAsync(s => s.Id == dto.SprintId.Value);
+
+                if (sprint == null)
                     return BadRequest(new { message = "Le sprint cible est introuvable." });
-                }
+
+                if (sprint.Status == SprintStatus.Closed)
+                    return BadRequest(new { message = "Impossible d'affecter une tâche à un sprint clôturé." });
             }
 
             // 2. Création de la tâche si tout est valide
@@ -194,7 +210,7 @@ namespace DevTeamTaskManager.Api.Controllers
                 task.EstimatedHours = dto.EstimatedHours.Value;
 
             if (dto.DueDate.HasValue)
-                task.DueDate = dto.DueDate.Value;
+                task.DueDate = DateTime.SpecifyKind(dto.DueDate.Value, DateTimeKind.Utc);
 
             task.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
@@ -215,34 +231,24 @@ namespace DevTeamTaskManager.Api.Controllers
             return NoContent();
         }
 
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteTask(int id)
+        [HttpDelete("{id:int}")]
+        public async Task<IActionResult> DeleteTask(int id, CancellationToken ct)
         {
-            // Inclure les TimeEntries pour pouvoir les supprimer proprement si nécessaire
-            var task = await _context.Tasks
-                .Include(t => t.TimeEntries)
-                .FirstOrDefaultAsync(t => t.Id == id);
-
+            var task = await _context.Tasks.FirstOrDefaultAsync(t => t.Id == id, ct);
             if (task == null) return NotFound();
 
-            try
+            var hasTimeEntries = await _context.TimeEntries.AnyAsync(te => te.TaskId == id, ct);
+            if (hasTimeEntries)
             {
-                // Supprimer d'abord les imputations de temps liées pour éviter les conflits de clés étrangères
-                if (task.TimeEntries != null && task.TimeEntries.Any())
-                {
-                    _context.TimeEntries.RemoveRange(task.TimeEntries);
-                }
+                return Conflict(new { message = "Impossible de supprimer cette tâche : du temps a déjà été imputé dessus." });
+            }
 
-                _context.Tasks.Remove(task);
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateException ex)
-            {
-                return BadRequest(new { message = "Impossible de supprimer cette tâche en raison de contraintes de données liées.", details = ex.InnerException?.Message ?? ex.Message });
-            }
+            _context.Tasks.Remove(task);
+            await _context.SaveChangesAsync(ct);
 
             return NoContent();
         }
+
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateTask(int id, UpdateTaskDto dto)
         {
@@ -256,24 +262,30 @@ namespace DevTeamTaskManager.Api.Controllers
                 }
             }
 
-            if (dto.SprintId.HasValue && dto.SprintId.Value > 0)
-            {
-                var sprintExists = await _context.Sprints.AnyAsync(s => s.Id == dto.SprintId.Value);
-                if (!sprintExists)
-                {
-                    return BadRequest(new { message = "Le sprint cible est introuvable." });
-                }
-            }
+
 
             // 2. Recherche et mise à jour de la tâche
             var task = await _context.Tasks.FindAsync(id);
             if (task == null) return NotFound();
 
+            if (dto.SprintId.HasValue && dto.SprintId != task.SprintId)
+            {
+                var targetSprint = await _context.Sprints
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(s => s.Id == dto.SprintId.Value);
+
+                if (targetSprint == null)
+                    return BadRequest(new { message = "Le sprint cible est introuvable." });
+
+                if (targetSprint.Status == SprintStatus.Closed)
+                    return BadRequest(new { message = "Impossible d'affecter une tâche à un sprint clôturé." });
+            }
             task.Client = dto.Client;
             task.Description = dto.Description;
             task.AssigneeId = dto.AssigneeId;
             task.EstimatedHours = dto.EstimatedHours;
-            task.DueDate = dto.DueDate;
+            // task.DueDate = dto.DueDate;
+            task.DueDate = DateTime.SpecifyKind(dto.DueDate, DateTimeKind.Utc);
             task.Priority = dto.Priority;
             task.SprintId = dto.SprintId;
 

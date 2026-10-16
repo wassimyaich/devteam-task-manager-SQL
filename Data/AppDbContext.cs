@@ -40,6 +40,11 @@ namespace DevTeamTaskManager.Api.Data
                 .HasForeignKey(te => te.DeveloperId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+
+            // Index sur les colonnes filtrées
+            modelBuilder.Entity<TaskItem>().HasIndex(t => t.Status);
+            modelBuilder.Entity<TaskItem>().HasIndex(t => t.Priority);
+            modelBuilder.Entity<TaskItem>().HasIndex(t => t.Client);
             // Seed Initial Development Data
             modelBuilder.Entity<Developer>().HasData(
                 new Developer { Id = 1, Name = "Wassim Yaich", Email = "wassim@devteam.local" },
@@ -52,8 +57,8 @@ namespace DevTeamTaskManager.Api.Data
                 {
                     Id = 1,
                     Name = "Sprint 1 - MVP Foundation",
-                    StartDate = new DateTime(2026, 10, 1),
-                    EndDate = new DateTime(2026, 10, 15),
+                    StartDate = new DateTime(2026, 10, 12),
+                    EndDate = new DateTime(2026, 10, 30),
                     Status = SprintStatus.Active
                 }
             );
