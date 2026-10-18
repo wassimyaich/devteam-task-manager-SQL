@@ -4,7 +4,8 @@ using DevTeamTaskManager.Api.Data;
 using DevTeamTaskManager.Api.Entities;
 using DevTeamTaskManager.Api.DTOs;
 using DevTeamTaskManager.Api.Enums;
-
+using System.Globalization;
+using System.Collections.Concurrent;
 namespace DevTeamTaskManager.Api.Controllers
 {
     [ApiController]
@@ -49,7 +50,7 @@ namespace DevTeamTaskManager.Api.Controllers
         public async Task<IActionResult> CloseSprint(int id, CancellationToken ct)
         {
             var sprint = await _context.Sprints
-                .Include(s => s.Tasks)
+                // .Include(s => s.Tasks)
                 .FirstOrDefaultAsync(s => s.Id == id, ct);
 
             if (sprint == null) return NotFound();
@@ -60,10 +61,10 @@ namespace DevTeamTaskManager.Api.Controllers
             sprint.Status = SprintStatus.Closed;
 
             // Les tâches non terminées retournent au backlog
-            foreach (var task in sprint.Tasks.Where(t => t.Status != Status.Completed).ToList())
-            {
-                task.SprintId = null;
-            }
+            // foreach (var task in sprint.Tasks.Where(t => t.Status != Status.Completed).ToList())
+            // {
+            //     task.SprintId = null;
+            // }
 
             await _context.SaveChangesAsync(ct);
             return NoContent();
@@ -86,20 +87,72 @@ namespace DevTeamTaskManager.Api.Controllers
         [HttpPost]
         public async Task<ActionResult<SprintCapacityReportDto>> CreateSprint([FromBody] CreateSprintDto dto, CancellationToken ct)
         {
+
             if (dto.StartDate == default || dto.EndDate == default)
                 return BadRequest(new { message = "Les dates de début et de fin sont obligatoires." });
 
+            if (string.IsNullOrWhiteSpace(dto.Name))
+            {
+                return BadRequest(new
+                {
+                    message = "Le nom du sprint est obligatoire."
+                });
+            }
+
+            if (dto.Name.Trim().Length > 100)
+            {
+                return BadRequest(new
+                {
+                    message = "Le nom du sprint ne peut pas dépasser 100 caractères."
+                });
+            }
+            var sprintName = dto.Name.Trim();
+            if (await _context.Sprints.AnyAsync(s => s.Name == sprintName, ct))
+            {
+                return Conflict(new { message = $"Un sprint nommé « {sprintName} » existe déjà." });
+            }
             if (dto.EndDate.Date < dto.StartDate.Date)
                 return BadRequest(new { message = "La date de fin du sprint doit être postérieure ou égale à la date de début." });
 
+            if (CountWorkingDays(dto.StartDate, dto.EndDate) == 0)
+            {
+                return BadRequest(new
+                {
+                    message = "Le sprint doit contenir au moins un jour ouvré."
+                });
+            }
+
             var taskIds = dto.TaskIds?.Distinct().ToList() ?? new List<int>();
+
 
             var tasksToAttach = taskIds.Count == 0
                 ? new List<TaskItem>()
-                : await _context.Tasks.Where(t => taskIds.Contains(t.Id)).ToListAsync(ct);
+                : await _context.Tasks
+                    .Include(t => t.Sprint)
+                    .Where(t => taskIds.Contains(t.Id))
+                    .ToListAsync(ct);
 
             if (tasksToAttach.Count != taskIds.Count)
-                return BadRequest(new { message = "Une ou plusieurs tâches sélectionnées sont introuvables." });
+            {
+                return BadRequest(new
+                {
+                    message = "Une ou plusieurs tâches sélectionnées sont introuvables."
+                });
+            }
+
+            var alreadyAssigned = tasksToAttach
+                .Where(t => t.SprintId.HasValue && t.Sprint!.Status != SprintStatus.Closed)
+                .Select(t => t.Id)
+                .ToList();
+
+            if (alreadyAssigned.Count > 0)
+            {
+                return Conflict(new
+                {
+                    message = "Certaines tâches appartiennent déjà à un sprint.",
+                    taskIds = alreadyAssigned
+                });
+            }
 
             var sprint = new Sprint
             {
@@ -186,15 +239,111 @@ namespace DevTeamTaskManager.Api.Controllers
             };
         }
 
-        private static int CountWorkingDays(DateTime start, DateTime end)
+
+        public static class TunisianHolidayPredictor
         {
+            private static readonly ConcurrentDictionary<int, HashSet<DateTime>> _holidayCache = new();
+
+            public static HashSet<DateTime> GetIslamicHolidays(int gregorianYear)
+                => _holidayCache.GetOrAdd(gregorianYear, ComputeIslamicHolidays);
+
+            private static HashSet<DateTime> ComputeIslamicHolidays(int gregorianYear)
+            {
+                var holidays = new HashSet<DateTime>();
+                var hijri = new HijriCalendar();
+
+                // Parcourir chaque jour de l'année grégorienne pour trouver les correspondances hégiriennes
+                DateTime start = new DateTime(gregorianYear, 1, 1);
+                DateTime end = new DateTime(gregorianYear, 12, 31);
+
+                for (var day = start; day <= end; day = day.AddDays(1))
+                {
+                    try
+                    {
+                        int hMonth = hijri.GetMonth(day);
+                        int hDay = hijri.GetDayOfMonth(day);
+
+                        // 1. Ras Am El Hijri (1 Muharram - Mois 1)
+                        if (hMonth == 1 && hDay == 1)
+                        {
+                            holidays.Add(day);
+                        }
+                        // 2. Mouled (12 Rabia al-Awwal - Mois 3)
+                        else if (hMonth == 3 && hDay == 12)
+                        {
+                            holidays.Add(day);
+                        }
+                        // 3. Aïd El Fitr (1, 2, et 3 Shawwal - Mois 10)
+                        else if (hMonth == 10 && hDay >= 1 && hDay <= 3)
+                        {
+                            holidays.Add(day);
+                        }
+                        // 4. Aïd El Idha (10, 11, et 12 Dhu al-Hijjah - Mois 12)
+                        else if (hMonth == 12 && hDay >= 10 && hDay <= 12)
+                        {
+                            holidays.Add(day);
+                        }
+                    }
+                    catch
+                    {
+                        // Ignore les éventuels décalages de conversion aux limites des calendriers
+                    }
+                }
+
+                return holidays;
+            }
+        }
+        // private static int CountWorkingDays(DateTime start, DateTime end)
+        // {
+        //     if (end.Date < start.Date)
+        //         return 0;
+
+        //     var days = 0;
+
+        //     for (var date = start.Date; date <= end.Date; date = date.AddDays(1))
+        //     {
+        //         if (date.DayOfWeek is not DayOfWeek.Saturday
+        //             and not DayOfWeek.Sunday)
+        //         {
+        //             days++;
+        //         }
+        //     }
+
+        //     return days;
+        // }
+
+
+        public static int CountWorkingDays(DateTime start, DateTime end)
+        {
+            var civilHolidays = new HashSet<DateTime>();
+            var religiousHolidays = new HashSet<DateTime>();
+
+            // Un sprint peut chevaucher deux années : on charge les jours fériés de chaque année
+            for (var year = start.Year; year <= end.Year; year++)
+            {
+                civilHolidays.Add(new DateTime(year, 1, 1));
+                civilHolidays.Add(new DateTime(year, 1, 14));
+                civilHolidays.Add(new DateTime(year, 3, 20));
+                civilHolidays.Add(new DateTime(year, 5, 1));
+                civilHolidays.Add(new DateTime(year, 7, 25));
+                civilHolidays.Add(new DateTime(year, 8, 13));
+                civilHolidays.Add(new DateTime(year, 10, 15));
+
+                religiousHolidays.UnionWith(TunisianHolidayPredictor.GetIslamicHolidays(year));
+            }
+
             var days = 0;
             for (var d = start.Date; d <= end.Date; d = d.AddDays(1))
             {
-                if (d.DayOfWeek != DayOfWeek.Saturday && d.DayOfWeek != DayOfWeek.Sunday)
+                if (d.DayOfWeek != DayOfWeek.Saturday &&
+                    d.DayOfWeek != DayOfWeek.Sunday &&
+                    !civilHolidays.Contains(d) &&
+                    !religiousHolidays.Contains(d))
+                {
                     days++;
+                }
             }
-            return Math.Max(days, 1);
+            return days;
         }
     }
 }

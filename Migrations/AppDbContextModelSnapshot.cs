@@ -198,7 +198,7 @@ namespace DevTeamTaskManager.Api.Migrations
                     b.HasOne("DevTeamTaskManager.Api.Entities.Developer", "Assignee")
                         .WithMany("Tasks")
                         .HasForeignKey("AssigneeId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("DevTeamTaskManager.Api.Entities.Sprint", "Sprint")

@@ -18,13 +18,13 @@ namespace DevTeamTaskManager.Api.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Developer>>> GetDevelopers()
+        public async Task<ActionResult<IEnumerable<Developer>>> GetDevelopers(CancellationToken ct)
         {
-            return await _context.Developers.ToListAsync();
+            return await _context.Developers.AsNoTracking().OrderBy(d => d.Name).ToListAsync(ct);
         }
 
         [HttpGet("search")]
-        public async Task<ActionResult<IEnumerable<Developer>>> SearchDevelopers([FromQuery] string term)
+        public async Task<ActionResult<IEnumerable<Developer>>> SearchDevelopers([FromQuery] string term, CancellationToken ct)
         {
             if (string.IsNullOrWhiteSpace(term) || term.Length < 2)
             {
@@ -32,9 +32,10 @@ namespace DevTeamTaskManager.Api.Controllers
             }
 
             var developers = await _context.Developers
+                .AsNoTracking()
                 .Where(d => d.Name.Contains(term) || (d.Email != null && d.Email.Contains(term)))
                 .Take(10)
-                .ToListAsync();
+                .ToListAsync(ct);
 
             return Ok(developers);
         }

@@ -90,13 +90,14 @@ namespace DevTeamTaskManager.Api.Controllers
             });
         }
         [HttpGet("{id}")]
-        public async Task<ActionResult<TaskResponseDto>> GetTask(int id)
+        public async Task<ActionResult<TaskResponseDto>> GetTask(int id, CancellationToken ct)
         {
             var t = await _context.Tasks
+                .AsNoTracking()
                 .Include(t => t.Assignee)
                 .Include(t => t.Sprint)
                 .Include(t => t.TimeEntries)
-                .FirstOrDefaultAsync(x => x.Id == id);
+                .FirstOrDefaultAsync(x => x.Id == id, ct);
 
             if (t == null) return NotFound();
 
@@ -104,12 +105,13 @@ namespace DevTeamTaskManager.Api.Controllers
         }
 
         [HttpGet("{id}/report")]
-        public async Task<ActionResult<TaskReportDto>> GetTaskReport(int id)
+        public async Task<ActionResult<TaskReportDto>> GetTaskReport(int id, CancellationToken ct)
         {
             var task = await _context.Tasks
+                .AsNoTracking()
                 .Include(t => t.TimeEntries)
                     .ThenInclude(te => te.Developer)
-                .FirstOrDefaultAsync(t => t.Id == id);
+                .FirstOrDefaultAsync(t => t.Id == id, ct);
 
             if (task == null) return NotFound();
 
@@ -143,6 +145,35 @@ namespace DevTeamTaskManager.Api.Controllers
         [HttpPost]
         public async Task<ActionResult<TaskResponseDto>> CreateTask(CreateTaskDto dto)
         {
+
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            if (string.IsNullOrWhiteSpace(dto.Client)
+                || string.IsNullOrWhiteSpace(dto.Description))
+            {
+                return BadRequest(new
+                {
+                    message = "Le client et la description sont obligatoires."
+                });
+            }
+
+            if (dto.DueDate == default)
+            {
+                return BadRequest(new
+                {
+                    message = "La date d'échéance est obligatoire et doit être valide."
+                });
+            }
+
+            if (!Enum.IsDefined(typeof(Priority), dto.Priority))
+            {
+                return BadRequest(new
+                {
+                    message = "La priorité sélectionnée est invalide."
+                });
+            }
+
             // 1. Validation de l'existence des clés étrangères AVANT la création
             if (dto.AssigneeId > 0)
             {
@@ -193,6 +224,29 @@ namespace DevTeamTaskManager.Api.Controllers
         [HttpPatch("{id}/inline")]
         public async Task<IActionResult> InlineUpdateTask(int id, InlineUpdateTaskDto dto)
         {
+
+            if (id <= 0)
+                return BadRequest(new { message = "L'identifiant de la tâche est invalide." });
+
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            if (!dto.EstimatedHours.HasValue && !dto.DueDate.HasValue)
+            {
+                return BadRequest(new
+                {
+                    message = "Fournissez au moins une valeur à modifier."
+                });
+            }
+
+            if (dto.DueDate.HasValue && dto.DueDate.Value == default)
+            {
+                return BadRequest(new
+                {
+                    message = "La date d'échéance est invalide."
+                });
+            }
+
             if (dto.EstimatedHours.HasValue &&
      (dto.EstimatedHours.Value < 0.1m ||
       dto.EstimatedHours.Value > 1000m))
@@ -252,6 +306,8 @@ namespace DevTeamTaskManager.Api.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateTask(int id, UpdateTaskDto dto)
         {
+            if (dto.DueDate == default)
+                return BadRequest(new { message = "La date d'échéance est obligatoire et doit être valide." });
             // 1. Validation de l'existence des clés étrangères AVANT la modification
             if (dto.AssigneeId > 0)
             {

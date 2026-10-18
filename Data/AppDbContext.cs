@@ -39,7 +39,11 @@ namespace DevTeamTaskManager.Api.Data
                 .WithOne(te => te.Developer)
                 .HasForeignKey(te => te.DeveloperId)
                 .OnDelete(DeleteBehavior.Restrict);
-
+            modelBuilder.Entity<TaskItem>()
+                            .HasOne(t => t.Assignee)
+                            .WithMany(d => d.Tasks)
+                            .HasForeignKey(t => t.AssigneeId)
+                            .OnDelete(DeleteBehavior.Restrict);
 
             // Index sur les colonnes filtrées
             modelBuilder.Entity<TaskItem>().HasIndex(t => t.Status);

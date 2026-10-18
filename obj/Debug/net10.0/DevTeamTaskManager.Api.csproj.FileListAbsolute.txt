@@ -184,7 +184,6 @@ C:\xampp\htdocs\DevTeamTaskManager_SQL\DevTeamTaskManager\DevTeamTaskManager.Api
 C:\xampp\htdocs\DevTeamTaskManager_SQL\DevTeamTaskManager\DevTeamTaskManager.Api\obj\Debug\net10.0\refint\DevTeamTaskManager.Api.dll
 C:\xampp\htdocs\DevTeamTaskManager_SQL\DevTeamTaskManager\DevTeamTaskManager.Api\obj\Debug\net10.0\DevTeamTaskManager.Api.pdb
 C:\xampp\htdocs\DevTeamTaskManager_SQL\DevTeamTaskManager\DevTeamTaskManager.Api\bin\Debug\net10.0\appsettings.Development.json
-C:\xampp\htdocs\DevTeamTaskManager_SQL\DevTeamTaskManager\DevTeamTaskManager.Api\bin\Debug\net10.0\DevTeamTaskManager-TestReport.json
 C:\xampp\htdocs\DevTeamTaskManager_SQL\DevTeamTaskManager\DevTeamTaskManager.Api\bin\Debug\net10.0\DevTeamTaskManager.Api.staticwebassets.endpoints.json
 C:\xampp\htdocs\DevTeamTaskManager_SQL\DevTeamTaskManager\DevTeamTaskManager.Api\bin\Debug\net10.0\appsettings.json
 C:\xampp\htdocs\DevTeamTaskManager_SQL\DevTeamTaskManager\DevTeamTaskManager.Api\bin\Debug\net10.0\DevTeamTaskManager.Api.staticwebassets.runtime.json
@@ -342,8 +341,7 @@ C:\xampp\htdocs\DevTeamTaskManager_SQL\DevTeamTaskManager\DevTeamTaskManager.Api
 C:\xampp\htdocs\DevTeamTaskManager_SQL\DevTeamTaskManager\DevTeamTaskManager.Api\obj\Debug\net10.0\DevTeamT.3513433C.Up2Date
 C:\xampp\htdocs\DevTeamTaskManager_SQL\DevTeamTaskManager\DevTeamTaskManager.Api\obj\Debug\net10.0\DevTeamTaskManager.Api.genruntimeconfig.cache
 C:\xampp\htdocs\DevTeamTaskManager_SQL\DevTeamTaskManager\DevTeamTaskManager.Api\obj\Debug\net10.0\ref\DevTeamTaskManager.Api.dll
-C:\xampp\htdocs\DevTeamTaskManager_SQL\DevTeamTaskManager\DevTeamTaskManager.Api\obj\Debug\net10.0\compressed\evzuk1a520-{0}-4xz2jln1bm-4xz2jln1bm.gz
 C:\xampp\htdocs\DevTeamTaskManager_SQL\DevTeamTaskManager\DevTeamTaskManager.Api\obj\Debug\net10.0\DevTeamTaskManager.Api.sourcelink.json
 C:\xampp\htdocs\DevTeamTaskManager_SQL\DevTeamTaskManager\DevTeamTaskManager.Api\bin\Debug\net10.0\System.Security.Cryptography.Pkcs.dll
 C:\xampp\htdocs\DevTeamTaskManager_SQL\DevTeamTaskManager\DevTeamTaskManager.Api\bin\Debug\net10.0\runtimes\win\lib\net10.0\System.Security.Cryptography.Pkcs.dll
-C:\xampp\htdocs\DevTeamTaskManager_SQL\DevTeamTaskManager\DevTeamTaskManager.Api\obj\Debug\net10.0\compressed\qjzv7la75q-{0}-65uqb1eq9j-65uqb1eq9j.gz
+C:\xampp\htdocs\DevTeamTaskManager_SQL\DevTeamTaskManager\DevTeamTaskManager.Api\obj\Debug\net10.0\compressed\qjzv7la75q-{0}-9tevtchpdn-9tevtchpdn.gz
