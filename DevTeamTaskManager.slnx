@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="DevTeamTaskManager.Api/DevTeamTaskManager.Api.csproj" />
+  <Project Path="DevTeamTaskManager.Tests/DevTeamTaskManager.Tests.csproj" />
+</Solution>
